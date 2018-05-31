@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/css/tControl.css"/>
+    <link rel="stylesheet" href="/css/bootstrap.css"/>
+    <link rel="stylesheet" href="/css/font-awesome.min.css"/>
+    <link rel="stylesheet" href="/css/font.css"/>
+    <link rel="stylesheet" href="/css/ionicons.min.css"/>
+</head>
+<body>
+<div class="wrapper">
+    <header class="top-header"></header>
+
+    <div id="headerSpread">
+
+    </div>
+
+    <aside class="sidebar-menu">
+
+    </aside>
+
+
+    <div class="main-container-sidebar" id="main-container">
+        <div class="smart-widget">
+            <div class="smart-widget-header">
+                <span>训练组图表</span>
+            </div>
+            <div class="smart-widget-inner">
+                <div class="smart-widget-body">
+                    <div id="group-chart"></div>
+                    <button id="precision">Precision</button>
+                    <button id="recall">Recall</button>
+                    <button id="f1">F1</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+<script src="/js/jquery-1.11.1.min.js"></script>
+<script src="/js/jquery.cookie.js"></script>
+<script src="/js/bootstrap.min.js"></script>
+<script src="/js/tframe.js"></script>
+<script src="/js/jquery.slimscroll.min.js"></script>
+<script src="https://img.hcharts.cn/highcharts/highcharts.js"></script>
+<script src="https://img.hcharts.cn/highcharts/themes/grid-light.js"></script>
+
+<script>
+    const getParams = (params) => {
+        const paramsArr = [];
+        for (let [key, value] of Object.entries(params)) {
+            paramsArr.push(`${key}=${value}`)
+        }
+        return paramsArr.join(", ")
+    };
+    showMenu("group_chart");
+    const id = queryString('id');
+    if (id) getDetail();
+    function getDetail() {
+        $.ajax({
+            url: '/api/group/' + id + '/chart',
+            type: 'GET',
+            success: function (data) {
+                plot({
+                    title: "训练精度",
+                    score: "precision_score",
+                    categories: data.datasets.categories,
+                    trains: data.trains,
+                    model_map: data.model_map
+                });
+                $('#precision').click(function () {
+                    plot({
+                        title: "训练精度",
+                        score: "precision_score",
+                        categories: data.datasets.categories,
+                        trains: data.trains,
+                        model_map: data.model_map
+                    });    });
+
+                $('#recall').click(function () {
+                    plot({
+                        title: "训练召回率",
+                        score: "recall_score",
+                        categories: data.datasets.categories,
+                        trains: data.trains,
+                        model_map: data.model_map
+                    });    });
+                $('#f1').click(function () {
+                    plot({
+                        title: "训练f1打分",
+                        score: "f1_score",
+                        categories: data.datasets.categories,
+                        trains: data.trains,
+                        model_map: data.model_map
+                    });
+                });
+            },
+            error: function (xhr) {
+                var myXhr = JSON.parse(xhr.responseText);
+                prompt('计划配置详情', myXhr.err_msg, 'error')
+            }
+        });
+    }
+</script>
+<script>
+    const plot = (option) => {
+        $("#group-chart").empty();
+        const config = {
+            chart: {
+                type: 'column'
+            },
+            title: {
+                text: '训练组图表'
+            },
+            subtitle: {
+                text: option.title
+            },
+            legend: {
+                align: 'center',
+                verticalAlign: 'bottom',
+                layout: 'vertical'
+            },
+            xAxis: {
+                categories: option.categories,
+                labels: {
+                    x: -10
+                }
+            },
+            yAxis: {
+                allowDecimals: true,
+                max: 1,
+                min: 0.9
+            },
+            series: [],
+            responsive: {
+                rules: [{
+                    condition: {
+                        maxWidth: 500
+                    },
+                    chartOptions: {
+                        legend: {
+                            align: 'center',
+                            verticalAlign: 'bottom',
+                            layout: 'horizontal'
+                        },
+                        yAxis: {
+                            labels: {
+                                align: 'left',
+                                x: 0,
+                                y: -5
+                            },
+                            title: {
+                                text: null
+                            }
+                        },
+                        subtitle: {
+                            text: null
+                        },
+                        credits: {
+                            enabled: false
+                        }
+                    }
+                }]
+            }
+        };
+        const series = [];
+        option.trains.every(function (item) {
+            series.push({
+                name: getParams(option.model_map[item.model_id]),
+                data: item[option.score]
+            });
+            return true;
+        });
+        config.series = series;
+        return Highcharts.chart('group-chart', config);
+    };
+
+
+
+</script>
+</body>
+</html>

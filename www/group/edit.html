@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/css/tControl.css"/>
+    <link rel="stylesheet" href="/css/bootstrap.css"/>
+    <link rel="stylesheet" href="/css/font-awesome.min.css"/>
+    <link rel="stylesheet" href="/css/font.css"/>
+    <link rel="stylesheet" href="/css/ionicons.min.css"/>
+</head>
+<body>
+<div class="wrapper">
+    <header class="top-header"></header>
+
+    <div id="headerSpread">
+
+    </div>
+
+    <aside class="sidebar-menu">
+
+    </aside>
+
+
+    <div class="main-container-sidebar" id="main-container">
+        <div class="smart-widget">
+            <div class="smart-widget-header">
+                <span>添加训练组</span>
+            </div>
+            <div class="smart-widget-inner">
+                <div class="smart-widget-body">
+                    <div class="form-horizontal">
+                        <div class="form-group">
+                            <label class="form-label control-label">训练组名称 <i class="icon">*</i></label>
+                            <div class="form-content">
+                                <input id="name" class="form-control" type="text" placeholder="请填写训练组名称">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label control-label"></label>
+                            <div class="form-content btn-group">
+                                <button id="submitBtn" class="btn-type btn-color">提交</button>
+                                <!-- Large modal -->
+                                <button type="button" class="btn-type btn-color" data-toggle="modal" data-target=".bs-example-modal-lg">选择模型</button>
+
+                                <div class="modal fade bs-example-modal-lg" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel">
+                                    <div class="modal-dialog modal-lg" role="document">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                                                <h4 class="modal-title" id="gridSystemModalLabel">选择模型</h4>
+                                            </div>
+                                            <div class="modal-body">
+                                                <table class="table">
+                                                    <thead>
+                                                    <tr>
+                                                        <th class="">模型</th>
+                                                        <th class="">模型参数</th>
+                                                        <th class="">训练进度</th>
+                                                        <th class="">正确率</th>
+                                                        <th class="">精度</th>
+                                                        <th class="">召回率</th>
+                                                        <th class="">操作</th>
+                                                    </tr>
+                                                    </thead>
+                                                    <tbody id="tableBody">
+
+                                                    </tbody>
+
+                                                </table>
+                                                <div class="pagers" id="pagers">
+                                                    <p id="pageCount" class="pageCount"></p>
+                                                    <P id="pageCounts"></P>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn-type btn-color" data-dismiss="modal">完成</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+<script src="/js/jquery-1.11.1.min.js"></script>
+<script src="/js/jquery.cookie.js"></script>
+<script src="/js/bootstrap.min.js"></script>
+<script src="/js/tframe.js"></script>
+<script src="/js/jquery.slimscroll.min.js"></script>
+<script>
+    const getModelMap = (models) => {
+        const modelMap = new Map();
+        models.every(function (item) {
+            const id = item._id;
+            delete item._id;
+            delete item.__v;
+            delete item.create_at;
+            modelMap.set(id, item);
+            return true;
+        });
+        return modelMap
+    };
+    const getParams = (params) => {
+        const paramsArr = [];
+        for (let [key, value] of Object.entries(params)) {
+            paramsArr.push(`${key}=${value}`)
+        }
+        return paramsArr.join(", ")
+    };
+    const loadList = (page) => {
+        data_page = page; //存当前页
+        const tableBody = $("#tableBody");
+        $('#pageCount').empty(); //分页器
+        tableBody.empty(); //展开的列表
+        $('#pageCounts').empty(); //总计
+        tableBody.append(loading(5)); //显示loading
+        $.ajax({
+            url: '/api/trains',
+            data: {
+                page: page
+            },
+            type: 'GET',
+            success: function (data) {
+                const node = data.page.node;//每页个数d
+                const total = data.page.total;//总数
+                const pages = Math.ceil(total / node);
+                tableBody.html("");
+                data_pages = pages;//保存总页数
+                const modelMap = getModelMap(data.models);
+                $.each(data.data, function (i, list) {
+                    let tr = $('<tr id="' + list._id + '"></tr>');
+                    tableBody.append(tr);
+                    tr.append(
+                        '<td >' + list.type + '</td>' +
+                        '<td >' + getParams(modelMap.get(list.model_id)) + '</td>' +
+                        '<td >' + (list.status === 0 ? "未训练" : list.status === 1 ? "正在训练" : "训练完成") + '</td>' +
+                        '<td >' + (list.accuracy_score ? list.accuracy_score.toFixed(3) : '-') + '</td>' +
+                        '<td >' + (list.precision_score_macro_avg ? list.precision_score_macro_avg.toFixed(3) : '-') + '</td>' +
+                        '<td >' + (list.recall_score_macro_avg ? list.recall_score_macro_avg.toFixed(3) : '-') + '</td>' +
+                        '');
+                    tr.append(
+                        '<td class="operateBoth">' +
+                        // '<span ><a class="cursor" href="edit.html?id=' + list.id + '">设备详情</a></span> ' +
+                        // '<span ><a class="cursor" href="breakInfo.html?id=' + list.id + '">故障信息</a></span> ' +
+                        '<button class="btn toggle"></button>' +
+                        '</td>'
+                    )
+                });
+
+                if (pages < 1) {
+                    $("#tableBody").append(
+                        '<tr>' +
+                        '<td  colspan="5" class="no-data" style="padding: 10px 0;text-align: center;">暂无数据</td>' +
+                        '</tr>'
+                    )
+                } else {
+                    pageCount(pages, page, total, '#pageCount', 5, '#tableBody');
+                }
+                for (let [key, value] of Object.entries(modelBtnMap)) {
+                    if (value) {
+                        $(`#${key}`).toggleClass("btn-success")
+                    }
+                }
+
+            }
+        })
+    }
+</script>
+<script>
+    showMenu("group_edit");
+    let data_pages = 0;//总的页数
+    let data_page = 0;//点击上下页，保存当前页
+    let page = 1;//初始化页
+    const modelBtnMap = {};
+    $(document).ready(function () {
+        loadList(page);
+    });
+    createPageAccount();
+    $("#tableBody").on("click", ".toggle", function () {
+        const id = $(this).parent().parent().attr("id");
+        $(this).toggleClass("btn-success");
+        modelBtnMap[id] = !modelBtnMap[id];
+    });
+
+    const id = queryString('id');
+    if (id) getDetail();
+
+    function getDetail() {
+        $.ajax({
+            url: '/api/group/' + id + '/view',
+            type: 'GET',
+            success: function (data) {
+                console.log(data);
+                $("#name").val(data.name);
+                data.trains.every(function (item) {
+                    modelBtnMap[item] = true;
+                    return true;
+                });
+            },
+            error: function (xhr) {
+                var myXhr = JSON.parse(xhr.responseText);
+                prompt('计划配置详情', myXhr.err_msg, 'error')
+            }
+        });
+    }
+
+
+
+    $("#submitBtn").click(function () {
+        const data = {
+            name: $("#name").val(),
+            trains: (() => {
+                const trains = [];
+                for (let [key, value] of Object.entries(modelBtnMap)) {
+                    if (value) {
+                        trains.push(key)
+                    }
+                }
+                return trains
+            })()
+        };
+        if (data.name.trim() === "") {
+            return prompt('修改训练组', '训练组名称不能为空', 'error')
+        }
+        if (data.models.length === 0) {
+            return prompt('修改预测项目', '至少要有1个模型', 'error')
+        }
+        $.ajax({
+            type: 'PUT',
+            url: `/api/group/${id}`,
+            data: data,
+            success: function (data) {
+                prompt('修改训练组', '修改训练组成功', 'right')
+//                $(".btnSure").click(function(){
+//                    location.href = 'list.html'
+//                })
+            },
+            error: function (xhr) {
+                const myXhr = JSON.parse(xhr.responseText);
+                if (xhr.status === 401) {
+                    prompt('修改训练组', myXhr.err_msg + ' 请重新登录', 'error')
+                } else {
+                    prompt('修改训练组', myXhr.err_msg, 'error')
+                }
+
+            }
+        })
+    })
+</script>
+</body>
+</html>

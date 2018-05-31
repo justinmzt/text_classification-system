@@ -1,0 +1,15 @@
+{
+  "apps": [{
+    "name": "text_classification",
+    "script": "index.js",
+    "cwd": "/app/node/text_classification",
+    "exec_mode": "fork",
+    "max_memory_restart": "1G",
+    "autorestart": true,
+    "node_args": [],
+    "args": [],
+    "env": {
+
+    }
+  }]
+}

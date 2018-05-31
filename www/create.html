@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/css/tControl.css"/>
+    <link rel="stylesheet" href="/css/bootstrap.css"/>
+    <link rel="stylesheet" href="/css/font-awesome.min.css"/>
+    <link rel="stylesheet" href="/css/font.css"/>
+    <link rel="stylesheet" href="/css/ionicons.min.css"/>
+</head>
+<body>
+<div class="wrapper">
+    <header class="top-header"></header>
+
+    <div id="headerSpread">
+
+    </div>
+
+    <aside class="sidebar-menu">
+
+    </aside>
+
+
+    <div class="main-container-sidebar" id="main-container">
+        <div class="smart-widget">
+            <div class="smart-widget-header">
+                <span>添加数据集</span>
+            </div>
+            <div class="smart-widget-inner">
+                <div class="smart-widget-body">
+                    <div class="form-horizontal">
+                        <div class="form-group">
+                            <label class="form-label control-label">数据集名称 <i class="icon">*</i></label>
+                            <div class="form-content">
+                                <input id="name" class="form-control" type="text" placeholder="请填写数据集名称">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label control-label">训练集 <i class="icon">*</i></label>
+                            <div class="form-content">
+                                <input id="train_file" class="form-control" type="text" placeholder="请填写训练集文件路径">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label control-label">测试集 <i class="icon">*</i></label>
+                            <div class="form-content">
+                                <input id="test_file" class="form-control" type="text" placeholder="请填写测试集文件路径">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label control-label">类别 <i class="icon">*</i></label>
+                            <div class="form-content">
+                                <textarea id="categories" class="form-control" rows="2" placeholder="请填写文本各分类标签，用','分割"></textarea>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label control-label"></label>
+                            <div class="form-content btn-group">
+                                <button id="submitBtn" class="btn-type btn-color">提交</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+<script src="/js/jquery-1.11.1.min.js"></script>
+<script src="/js/jquery.cookie.js"></script>
+<script src="/js/bootstrap.min.js"></script>
+<script src="/js/tframe.js"></script>
+<script src="/js/jquery.slimscroll.min.js"></script>
+<script>
+    const trimCategories = (str) => {
+        const categories = str.split(",");
+        for (let i = 0; i < categories.length; i++) {
+            categories[i] = categories[i].trim()
+        }
+        return categories
+    };
+    const checkCategories = (categories) => {
+        for (let i = 0; i < categories.length; i++) {
+            if (categories[i].trim() === "") {
+                return true
+            }
+        }
+        return false
+    };
+
+    showMenu("dataset_create");
+    $("#submitBtn").click(function () {
+        const data = {
+            name: $("#name").val(),
+            train_file: $('#train_file').val(),
+            test_file: $('#test_file').val(),
+            categories: trimCategories($('#categories').val())
+        };
+        if (data.name.trim() === "") {
+            return prompt('添加数据集', '数据集名称不能为空', 'error')
+        }
+        if (data.train_file.trim() === "") {
+            return prompt('添加数据集', '训练集文件不能为空', 'error')
+        }
+        if (data.test_file.trim() === "") {
+            return prompt('添加数据集', '测试集文件不能为空', 'error')
+        }
+        if (data.categories.length === 1) {
+            return prompt('添加数据集', '至少要有2个分类标签', 'error')
+        } else if (checkCategories(data.categories)) {
+            return prompt('添加数据集', '分类标签不能为空', 'error')
+        }
+        $.ajax({
+            type: 'POST',
+            url: '/api/dataset',
+            data: data,
+            success: function (data) {
+                prompt('添加数据集', '添加数据集成功', 'right')
+//                $(".btnSure").click(function(){
+//                    location.href = 'list.html'
+//                })
+            },
+            error: function (xhr) {
+                const myXhr = JSON.parse(xhr.responseText);
+                if (xhr.status === 401) {
+                    prompt('添加数据集', myXhr.err_msg + ' 请重新登录', 'error')
+                } else {
+                    prompt('添加数据集', myXhr.err_msg, 'error')
+                }
+
+            }
+        })
+
+    })
+</script>
+</body>
+</html>

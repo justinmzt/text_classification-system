@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/css/tControl.css"/>
+    <link rel="stylesheet" href="/css/bootstrap.css"/>
+    <link rel="stylesheet" href="/css/font-awesome.min.css"/>
+    <link rel="stylesheet" href="/css/font.css"/>
+    <link rel="stylesheet" href="/css/ionicons.min.css"/>
+</head>
+<style>
+    td, th {
+        text-align: center;
+    }
+</style>
+<body>
+<div class="wrapper">
+    <header class="top-header"></header>
+
+    <div id="headerSpread">
+
+    </div>
+
+    <aside class="sidebar-menu">
+
+    </aside>
+
+
+    <div class="main-container-sidebar" id="main-container">
+        <div class="smart-widget">
+            <div class="smart-widget-header">
+                <span>文本分类演示</span>
+            </div>
+            <div class="smart-widget-inner">
+                <div class="smart-widget-body">
+                    <table class="table table-hover">
+
+                    </table>
+                    <div id="charts">
+
+                    </div>
+
+                    <div class="form-horizontal">
+                        <div class="form-group">
+                            <label class="form-label control-label">文本 <i class="icon">*</i></label>
+                            <div class="form-content">
+                                <textarea id="segment" class="form-control" rows="5" style="width: 125%"
+                                          placeholder="请填写需要分类的文本"></textarea>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label control-label"></label>
+                            <div class="form-content btn-group">
+                                <button id="submitBtn" class="btn-type btn-color">提交</button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+
+<script src="/js/jquery-1.11.1.min.js"></script>
+<script src="/js/jquery.cookie.js"></script>
+<script src="/js/bootstrap.min.js"></script>
+<script src="/js/tframe.js"></script>
+<script src="/js/jquery.slimscroll.min.js"></script>
+<script src="https://img.hcharts.cn/highcharts/highcharts.js"></script>
+<script src="https://img.hcharts.cn/highcharts/themes/grid-light.js"></script>
+
+<script>
+    const plot = (option) => {
+        console.log(option)
+        $(`#${option.node}`).empty();
+        const config = {
+            chart: {
+                type: 'column'
+            },
+            title: {
+                text: '输出分析'
+            },
+            subtitle: {
+                text: option.title
+            },
+            legend: {
+                align: 'center',
+                verticalAlign: 'bottom',
+                layout: 'vertical'
+            },
+            xAxis: {
+                categories: option.categories,
+                labels: {
+                    x: -10
+                }
+            },
+            yAxis: {
+                softThreshold: false,
+                allowDecimals: true,
+                max: option.max,
+                min: option.min
+            },
+            series: option.series,
+            plotOptions: {
+                series: {
+                    threshold: -100,
+                }
+            },
+            responsive: {
+                rules: [{
+                    condition: {
+                        maxWidth: 500
+                    },
+                    chartOptions: {
+                        legend: {
+                            align: 'center',
+                            verticalAlign: 'bottom',
+                            layout: 'horizontal'
+                        },
+                        yAxis: {
+                            labels: {
+                                align: 'left',
+                                x: 0,
+                                y: -5
+                            },
+                            title: {
+                                text: null
+                            }
+                        },
+                        subtitle: {
+                            text: null
+                        },
+                        credits: {
+                            enabled: false
+                        }
+                    }
+                }]
+            }
+        };
+        return Highcharts.chart(option.node, config);
+    };
+</script>
+<script>
+    showMenu("prediction_perform");
+    $(document).ready(function () {
+    });
+    const modelTitle = {
+        MNB: "概率log值",
+        LinearSVC: "支持向量间隔"
+    }
+    const table = $(".table");
+    const chartsNode = $("#charts");
+    $("#submitBtn").click(function () {
+        const data = {
+            segment: $("#segment").val(),
+        };
+        if (data.segment.trim() === "") {
+            return prompt('文本分类演示', '分类文本不能为空', 'error')
+        }
+        $.ajax({
+            type: 'POST',
+            url: '/api/prediction/perform',
+            data: data,
+            success: function (data) {
+                console.log(data);
+                const preds = data.preds;
+                const modelCnt = {};
+                let tableBody;
+                if (data.cLen > 2) {
+                    table.empty();
+                    table.append(` <thead><tr>
+                            <th>模型</th>
+                            <th>1st</th>
+                            <th>2nd</th>
+                            <th>3rd</th></tr></thead><tbody id="tableBody"></tbody>`);
+                    tableBody = $("#tableBody");
+                }
+                for (let key of Object.keys(preds)) {
+                    const type = preds[key].type;
+                    if (!modelCnt[type]) {
+                        modelCnt[type] = {
+                            mLen: 1,
+                            series: []
+                        };
+                        chartsNode.append(`<div id="${type}-chart"></div>`)
+                    }
+                    else modelCnt[type].mLen++;
+                    const modelName = `${type}${modelCnt[type].mLen}`;
+                    const df = preds[key].decision_function;
+                    const categorySort = Object.keys(df).sort((l1, l2) => {
+                        return df[l2] - df[l1]
+                    });
+                    if (data.cLen > 2) {
+                        let tr = $('<tr></tr>');
+                        tableBody.append(tr);
+                        tr.append(
+                            '<td >' + modelName + '</td>' +
+                            '<td class="success">' + categorySort[0] + '</td>' +
+                            '<td>' + categorySort[1] + '</td>' +
+                            '<td>' + categorySort[2] + '</td>' +
+                            '');
+                    }
+                    // 判断图表极值
+                    if (!modelCnt[type].max) {
+                        modelCnt[type].max = df[categorySort[0]]
+                    }
+                    else {
+                        if (categorySort[0] > modelCnt[type].max) {
+                            modelCnt[type].max = df[categorySort[0]]
+                        }
+                    }
+                    if (!modelCnt[type].min) {
+                        modelCnt[type].min = df[categorySort[data.cLen - 1]]
+                    }
+                    else {
+                        if (categorySort[data.cLen - 1] < modelCnt[type].min) {
+                            modelCnt[type].min = df[categorySort[data.cLen - 1]]
+                        }
+                    }
+                    // 获取数据
+                    const chartData = [];
+                    for (let key of data.categories) {
+                        chartData.push(df[key])
+                    }
+                    // 插入到图表数据中
+                    modelCnt[type].series.push({
+                        name: modelName,
+                        data: chartData
+                    })
+                }
+                // 加载图表
+                for (let key of Object.keys(modelCnt)) {
+                    plot({
+                        node: `${key}-chart`,
+                        title: `${key}模型:${modelTitle[key]}`,
+                        score: "precision_score",
+                        categories: data.categories,
+                        series: modelCnt[key].series,
+                        max: modelCnt[key].max,
+                        min: modelCnt[key].min,
+                    });
+                }
+                // alert(`分类结果: ${data[k].pred}`)
+                // $(".btnSure").click(function(){
+                //     location.href = 'list.html'
+                // })
+            },
+            error: function (xhr) {
+                const myXhr = JSON.parse(xhr.responseText);
+                if (xhr.status === 401) {
+                    prompt('文本分类演示', myXhr.err_msg + ' 请重新登录', 'error')
+                } else {
+                    prompt('文本分类演示', myXhr.err_msg, 'error')
+                }
+
+            }
+        })
+
+    })
+</script>
+</body>
+</html>

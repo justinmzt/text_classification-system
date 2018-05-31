@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/css/tControl.css"/>
+    <link rel="stylesheet" href="/css/bootstrap.css"/>
+    <link rel="stylesheet" href="/css/font-awesome.min.css"/>
+    <link rel="stylesheet" href="/css/font.css"/>
+    <link rel="stylesheet" href="/css/ionicons.min.css"/>
+</head>
+<body>
+<div class="wrapper">
+    <header class="top-header"></header>
+
+    <div id="headerSpread">
+
+    </div>
+
+    <aside class="sidebar-menu">
+
+    </aside>
+
+
+    <div class="main-container-sidebar" id="main-container">
+        <div class="smart-widget">
+            <div class="smart-widget-header">
+                <span>设备列表</span>
+            </div>
+            <div class="smart-widget-inner">
+                <div class="smart-widget-body">
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th class="">预测项目名称</th>
+                            <th class="">状态</th>
+                            <th class="">操作</th>
+                        </tr>
+                        </thead>
+                        <tbody id="tableBody">
+
+                        </tbody>
+
+                    </table>
+                    <div class="pagers" id="pagers">
+                        <p id="pageCount" class="pageCount"></p>
+                        <P id="pageCounts"></P>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+<script src="/js/jquery-1.11.1.min.js"></script>
+<script src="/js/jquery.cookie.js"></script>
+<script src="/js/bootstrap.min.js"></script>
+<script src="/js/tframe.js"></script>
+<script src="/js/jquery.slimscroll.min.js"></script>
+<script>
+    showMenu("prediction_list");
+    let data_pages = 0;//总的页数
+    let data_page = 0;//点击上下页，保存当前页
+    let page = 1;//初始化页
+    $(document).ready(function () {
+        loadList(page);
+    });
+
+    function loadList(page) {
+        data_page = page; //存当前页
+        const tableBody = $("#tableBody");
+        $('#pageCount').empty(); //分页器
+        tableBody.empty(); //展开的列表
+        $('#pageCounts').empty(); //总计
+        tableBody.append(loading(5)); //显示loading
+        $.ajax({
+            url: '/api/predictions',
+            data: {
+                page: page
+            },
+            type: 'GET',
+            success: function (data) {
+                const node = data.page.node;//每页个数d
+                const total = data.page.total;//总数
+                const pages = Math.ceil(total / node);
+                tableBody.html("");
+                data_pages = pages;//保存总页数
+                $.each(data.data, function (i, list) {
+                    let tr = $('<tr id="' + list.id + '"></tr>');
+                    tableBody.append(tr);
+                    const content = {};
+                    if (list.status === 0) {
+                        content.status = "关闭";
+                        content.operator = '<span class="cursor btn-sm btn-info open">打开</span>'
+                    }
+                    else {
+                        content.operator = '<span class="cursor btn-sm btn-danger shutdown">关闭</span>';
+                        if (list.status === 1) content.status = "正在开启";
+                        else content.status = "开启"
+                    }
+                    tr.append(
+                        '<td >' + list.name + '</td>' +
+                        '<td >' + content.status + '</td>' +
+                        '');
+                    tr.append(
+                        '<td class="operateBoth" id="' + list._id + '">' +
+                        // '<span ><a class="cursor" href="edit.html?id=' + list.id + '">设备详情</a></span> ' +
+                        // '<span ><a class="cursor" href="breakInfo.html?id=' + list.id + '">故障信息</a></span> ' +
+                        content.operator +
+                        '<span class="cursor delete">删除</span>' +
+                        '</td>'
+                    )
+                });
+
+                if (pages < 1) {
+                    $("#tableBody").append(
+                        '<tr>' +
+                        '<td  colspan="5" class="no-data" style="padding: 10px 0;text-align: center;">暂无数据</td>' +
+                        '</tr>'
+                    )
+                } else {
+                    pageCount(pages, page, total, '#pageCount', 5, '#tableBody');
+                }
+
+            }
+        })
+    }
+
+    createPageAccount();
+    const tableBody = $("#tableBody");
+    tableBody.on("click", ".delete", function () {
+        prompt("删除预测项目", '确定删除吗?', "ask");
+        const id = $(this).parent().attr("id");
+        $(".btnSure").click(function () {
+            $("#editModal").empty();
+            $.ajax({
+                url: '/api/prediction/' + id,
+                type: "DELETE",
+                success: function () {
+                    prompt("删除预测项目", '删除成功', 'right');
+                    loadList(page);
+                },
+                error: function (xhr) {
+                    let myXhr = JSON.parse(xhr.responseText);
+                    prompt('删除预测项目', myXhr.err_msg, 'error')
+                }
+            })
+        })
+    })
+    tableBody.on("click", ".open", function () {
+        prompt("打开预测项目", '确定打开吗?', "ask");
+        const id = $(this).parent().attr("id");
+        $(".btnSure").click(function () {
+            $.ajax({
+                url: '/api/prediction/open/' + id,
+                type: "PATCH",
+                success: function () {
+                    loadList(page);
+                },
+                error: function (xhr) {
+                    let myXhr = JSON.parse(xhr.responseText);
+                    prompt('打开预测项目', myXhr.err_msg, 'error')
+                }
+            })
+        })
+    })
+    tableBody.on("click", ".shutdown", function () {
+        prompt("关闭预测项目", '确定关闭吗?', "ask");
+        const id = $(this).parent().attr("id");
+        $(".btnSure").click(function () {
+            $.ajax({
+                url: '/api/prediction/shutdown/' + id,
+                type: "PATCH",
+                success: function () {
+                    loadList(page);
+                },
+                error: function (xhr) {
+                    let myXhr = JSON.parse(xhr.responseText);
+                    prompt('关闭预测项目', myXhr.err_msg, 'error')
+                }
+            })
+        })
+    })
+</script>
+</body>
+</html>

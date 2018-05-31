@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/css/tControl.css"/>
+    <link rel="stylesheet" href="/css/bootstrap.css"/>
+    <link rel="stylesheet" href="/css/font-awesome.min.css"/>
+    <link rel="stylesheet" href="/css/font.css"/>
+    <link rel="stylesheet" href="/css/ionicons.min.css"/>
+</head>
+<body>
+<div class="wrapper">
+    <header class="top-header"></header>
+
+    <div id="headerSpread">
+
+    </div>
+
+    <aside class="sidebar-menu">
+
+    </aside>
+
+
+    <div class="main-container-sidebar" id="main-container">
+        <div class="smart-widget">
+            <div class="smart-widget-header">
+                <span>添加训练</span>
+            </div>
+            <div class="smart-widget-inner">
+                <div class="smart-widget-body">
+                    <div class="form-horizontal">
+                        <div class="form-group">
+                            <label class="form-label control-label">模型选择 <i class="icon">*</i></label>
+                            <div class="form-content">
+                                <select class="form-control" id="type">
+                                    <option value="MNB">MNB</option>
+                                    <option value="LinearSVC">SVM</option>
+                                    <option value="DT">DT</option>
+                                    <option value="KNN">KNN</option>
+                                    <option value="XGBOOST">XGBOOST</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="params">
+
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label control-label"></label>
+                            <div class="form-content btn-group">
+                                <button id="submitBtn" class="btn-type btn-color">提交</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+<script src="/js/jquery-1.11.1.min.js"></script>
+<script src="/js/jquery.cookie.js"></script>
+<script src="/js/bootstrap.min.js"></script>
+<script src="/js/tframe.js"></script>
+<script src="/js/jquery.slimscroll.min.js"></script>
+<script>
+    const paramsTable = {
+        "MNB": `<div class="form-group">
+                   <label class="form-label control-label">平滑参数 <i class="icon">*</i></label>
+                   <div class="form-content">
+                       <input id="alpha" class="form-control" type="text" placeholder="请填写平滑参数">
+                   </div>
+               </div>
+               <div class="form-group">
+                   <label class="form-label control-label">计算先验概率 <i class="icon">*</i></label>
+                   <div class="form-content">
+                       <select class="form-control" id="fit_prior">
+                           <option value=true>是</option>
+                           <option value=false>否</option>
+                       </select>
+                   </div>
+               </div>`,
+        "LinearSVC": `<div class="form-group">
+                   <label class="form-label control-label">惩罚系数 <i class="icon">*</i></label>
+                   <div class="form-content">
+                       <input id="C" class="form-control" type="text" placeholder="请填写错误项的惩罚系数C，默认1.0">
+                   </div>
+                   </div>
+                   <div class="form-group">
+                   <label class="form-label control-label">误差容忍值 <i class="icon">*</i></label>
+                   <div class="form-content">
+                       <input id="tol" class="form-control" type="text" placeholder="请填写线性核SVM的误差容忍值，默认0.0001">
+                   </div>
+                   </div>
+                   <div class="form-group">
+                   <label class="form-label control-label">正则化 <i class="icon">*</i></label>
+                   <div class="form-content">
+                       <select class="form-control" id="penalty">
+                           <option value=l2>L2</option>
+                           <option value=l1>L1</option>
+                       </select>
+                   </div>
+               </div>
+               <div class="form-group">
+                   <label class="form-label control-label">损失 <i class="icon">*</i></label>
+                   <div class="form-content">
+                       <select class="form-control" id="loss">
+                           <option value=squared_hinge>Squared loss</option>
+                           <option value=hinge>Hinge loss</option>
+                       </select>
+                   </div>
+               </div>
+               </div>`,
+        "DT": `<div class="form-group">
+                   <label class="form-label control-label">DT参数 <i class="icon">*</i></label>
+                   <div class="form-content">
+                       <input id="alpha" class="form-control" type="text" placeholder="请填写DT参数">
+                   </div>
+               </div>`,
+        "KNN": `<div class="form-group">
+                   <label class="form-label control-label">KNN参数 <i class="icon">*</i></label>
+                   <div class="form-content">
+                       <input id="alpha" class="form-control" type="text" placeholder="请填写KNN数">
+                   </div>
+               </div>`,
+        "XGBOOST": `<div class="form-group">
+                   <label class="form-label control-label">XGBOOST参数 <i class="icon">*</i></label>
+                   <div class="form-content">
+                       <input id="alpha" class="form-control" type="text" placeholder="请填写XGBOOST数">
+                   </div>
+               </div>`,
+    }
+    const paramsFuncMap = {
+        "MNB": () => {
+            const data = {
+                type: "MNB",
+                alpha: checkFloat($("#alpha").val()),
+                fit_prior: $("#fit_prior").val() === "true"
+            };
+            if (data.alpha === false) {
+                return {err: {err_name: "添加训练", err_msg: "平滑参数请输入数字"}}
+            }
+            return {err: null, data}
+        },
+        "LinearSVC": () => {
+            const data = {
+                type: "LinearSVC",
+                C: checkFloat($("#C").val()),
+                tol: checkFloat($("#tol").val()),
+                loss: $("#loss").val(),
+                penalty: $("#penalty").val()
+            };
+            return {err: null, data}
+        },
+        "DT": () => {
+            const data = {
+                type: "DT",
+            };
+            return {err: null, data}
+        },
+        "KNN": () => {
+            const data = {
+                type: "KNN",
+            };
+            return {err: null, data}
+        },
+        "XGBOOST": () => {
+            const data = {
+                type: "XGBOOST",
+            };
+            return {err: null, data}
+        },
+    }
+</script>
+<script>
+    const checkFloat = (value) => {
+        if (!/^[0-9]*\.?[0-9]+$/.test(value)) {
+            return false
+        }
+        return parseFloat(value)
+    };
+    const typeSelect = () => {
+        const typeNode = $("#type");
+        const paramsNode = $("#params");
+        paramsNode.append(paramsTable[typeNode.val()]);
+        typeNode.change(function () {
+            paramsNode.empty().append(paramsTable[typeNode.val()])
+        });
+    };
+    showMenu("train_create");
+    typeSelect();
+
+    $("#submitBtn").click(function () {
+        const {err, data} = paramsFuncMap[$("#type").val()]();
+        if (err) {
+            return prompt(err.err_name, err.err_msg, 'error')
+        }
+        console.log(data)
+        $.ajax({
+            type: 'POST',
+            url: '/api/train',
+            data: data,
+            success: function (data) {
+                prompt('添加训练', '添加训练成功', 'right')
+//                $(".btnSure").click(function(){
+//                    location.href = 'list.html'
+//                })
+            },
+            error: function (xhr) {
+                const myXhr = JSON.parse(xhr.responseText);
+                if (xhr.status === 401) {
+                    prompt('添加训练', myXhr.err_msg + ' 请重新登录', 'error')
+                } else {
+                    prompt('添加训练', myXhr.err_msg, 'error')
+                }
+
+            }
+        })
+
+    })
+</script>
+</body>
+</html>

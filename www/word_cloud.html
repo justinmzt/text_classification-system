@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/css/tControl.css"/>
+    <link rel="stylesheet" href="/css/bootstrap.css"/>
+    <link rel="stylesheet" href="/css/font-awesome.min.css"/>
+    <link rel="stylesheet" href="/css/font.css"/>
+    <link rel="stylesheet" href="/css/ionicons.min.css"/>
+</head>
+<body>
+<div class="wrapper">
+    <header class="top-header"></header>
+
+    <div id="headerSpread">
+
+    </div>
+
+    <aside class="sidebar-menu">
+
+    </aside>
+
+
+    <div class="main-container-sidebar" id="main-container">
+        <div class="smart-widget">
+            <div class="smart-widget-header">
+                <span>数据词云</span>
+            </div>
+            <div class="smart-widget-inner">
+                <div class="smart-widget-body">
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            选择类别... <span class="caret"></span>
+                        </button>
+                        <ul class="dropdown-menu"></ul>
+                    </div>
+                </div>
+                <div class="smart-widget-body">
+                    <div id="tf"></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+<script src="/js/jquery-1.11.1.min.js"></script>
+<script src="/js/jquery.cookie.js"></script>
+<script src="/js/bootstrap.min.js"></script>
+<script src="/js/tframe.js"></script>
+<script src="/js/jquery.slimscroll.min.js"></script>
+<script src="https://img.hcharts.cn/highcharts/highcharts.js"></script>
+<script src="https://code.highcharts.com/modules/wordcloud.js"></script>
+<script src="https://img.hcharts.cn/highcharts/themes/grid-light.js"></script>
+<script>
+    showMenu("word_cloud");
+    const id = queryString('id');
+    if (id) getDetail();
+    function getDetail() {
+        $.ajax({
+            url: '/api/dataset/' + id,
+            type: 'GET',
+            success: function (data) {
+                const keywords = JSON.parse(data.data.keywords);
+                const categories = data.data.categories;
+                for (let i = 0; i < categories.length; i++) {
+                    $(".dropdown-menu").append(`<li><a href=\"#\" name="${i}"> ${categories[i]}</a></li>`)
+                }
+                $(".dropdown-menu a").click(function () {
+                    const id = $(this).attr("name");
+                    plot_wc({
+                        title: `${categories[id]} 类别TF-IDF词云`,
+                        data: keywords[id]
+                    })
+                });
+
+                plot_wc({
+                    title: "游戏 类别TF-IDF词云",
+                    data: keywords[0]
+                })
+            },
+            error: function (xhr) {
+                var myXhr = JSON.parse(xhr.responseText);
+                prompt('计划配置详情', myXhr.err_msg, 'error')
+            }
+        });
+    }
+    const plot_wc = (option) => {
+        $("#tf").empty();
+        Highcharts.chart('tf', {
+            series: [{
+                type: 'wordcloud',
+                data: option.data,
+                name: 'TF-IDF',
+                borderRadius: 50
+            }],
+            title: {
+                text: option.title
+            }
+        });
+    }
+
+
+</script>
+</body>
+</html>
